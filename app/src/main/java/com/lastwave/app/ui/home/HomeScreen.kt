@@ -259,6 +259,7 @@ private suspend fun snapshotFlowNearEnd(listState: LazyListState, onNearEnd: () 
  * that they don't need their own permanent icons.
  */
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun HomeHeader(
     displayUsername: String,
     isViewingFriend: Boolean,
