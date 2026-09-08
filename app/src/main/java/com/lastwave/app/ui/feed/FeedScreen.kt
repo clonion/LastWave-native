@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -845,17 +844,7 @@ private fun QuickPicksRows(
                                     modifier = Modifier.padding(start = 2.dp),
                                 )
                             }
-                            IconButton(
-                                onClick = { onMenuClick(track) },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = "More options for ${track.title}",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                            com.lastwave.app.ui.common.OverflowMenuButton(onClick = { onMenuClick(track) })
                         }
                     }
                 }
