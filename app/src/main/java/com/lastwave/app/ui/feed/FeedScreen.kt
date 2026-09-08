@@ -777,7 +777,6 @@ private fun QuickTileCard(tile: FeedQuickTile, modifier: Modifier = Modifier, on
  * instead of the old 3-per-column horizontal scroller, with bigger 56dp
  * artwork so tracks read clearly instead of feeling cramped.
  */
-@Composable
 private fun QuickPicksRows(
     tracks: List<YouTubeMusicTrack>,
     currentPlayingVideoId: String?,
