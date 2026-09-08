@@ -330,7 +330,11 @@ private fun FloatingNavBar(
                     0.75.dp,
                     MaterialTheme.colorScheme.outlineVariant,
                 ),
-                modifier = Modifier.liquidGlassChrome(DockShape, liquidGlass),
+                modifier = Modifier.liquidGlassChrome(
+                    DockShape,
+                    liquidGlass,
+                    amoled = MaterialTheme.colorScheme.background == Color.Black,
+                ),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),

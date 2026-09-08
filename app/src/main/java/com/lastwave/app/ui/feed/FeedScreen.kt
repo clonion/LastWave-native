@@ -1,13 +1,17 @@
 package com.lastwave.app.ui.feed
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -232,6 +236,28 @@ fun FeedScreen(
                         }
                     }
 
+                    // Ordered to mirror Nocturne's home layout: the hero
+                    // carousel comes right after the header/tiles, before
+                    // the quick-picks list — a "curated & trending" hero
+                    // moment up top rather than buried mid-feed.
+                    if (showPlaylists && state.feedData.mixes.isNotEmpty()) {
+                        item(key = "mixed_for_you") {
+                            FeedSectionHeader(
+                                title = "Mixes to explore",
+                                subtitle = "Familiar favorites, fresh combinations",
+                                actionText = "Shuffle",
+                                actionIcon = Icons.Filled.Shuffle,
+                                onActionClick = {
+                                    state.feedData.mixes.randomOrNull()?.let(viewModel::playPlaylistSummary)
+                                },
+                            )
+                            AutoScrollingMixesCarousel(
+                                mixes = state.feedData.mixes,
+                                onOpenPlaylist = { onOpenFeedPlaylist(it) },
+                            )
+                        }
+                    }
+
                     if (showSongs && state.feedData.quickPicks.isNotEmpty()) {
                         item(key = "quick_picks") {
                             val title = if (state.feedData.hasYtRecommendations) "Picked for you" else "Quick picks"
@@ -254,6 +280,57 @@ fun FeedScreen(
                                 onTrackClick = { index -> viewModel.playTracksQueue(state.feedData.quickPicks, index, "Quick Picks") },
                                 onMenuClick = { menuTrack = it },
                             )
+                        }
+                    }
+
+                    // "Jump back in" moved up to sit right after quick
+                    // picks — matches Nocturne's Keep Listening placement,
+                    // second section a returning listener sees.
+                    if (showSongs && state.feedData.jumpBackIn.isNotEmpty()) {
+                        item(key = "jump_back_in") {
+                            FeedSectionHeader(
+                                title = "Jump back in",
+                                subtitle = "From your listening history",
+                                actionText = "Play all",
+                                actionIcon = Icons.Filled.PlayArrow,
+                                onActionClick = { viewModel.playRecentQueue(state.feedData.jumpBackIn, 0) },
+                            )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.padding(top = 12.dp),
+                            ) {
+                                itemsIndexed(state.feedData.jumpBackIn) { index, track ->
+                                    RecentTrackCard(
+                                        track = track,
+                                        onClick = { viewModel.playRecentQueue(state.feedData.jumpBackIn, index) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    state.feedData.becauseYouListenTo?.takeIf { showSongs && it.items.isNotEmpty() }?.let { section ->
+                        item(key = "because_you_listen_to") {
+                            FeedSectionHeader(
+                                title = section.title,
+                                subtitle = section.subtitle,
+                                actionText = "Play all",
+                                actionIcon = Icons.Filled.PlayArrow,
+                                onActionClick = { viewModel.playTracksQueue(section.items, 0, section.title) },
+                            )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.padding(top = 12.dp),
+                            ) {
+                                itemsIndexed(section.items) { index, track ->
+                                    SongTrackCard(
+                                        track = track,
+                                        onClick = { viewModel.playTracksQueue(section.items, index, section.title) },
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -299,80 +376,6 @@ fun FeedScreen(
                                     SongTrackCard(
                                         track = track,
                                         onClick = { viewModel.playTracksQueue(state.feedData.ytRecentSongs, index, "YouTube History") },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    state.feedData.becauseYouListenTo?.takeIf { showSongs && it.items.isNotEmpty() }?.let { section ->
-                        item(key = "because_you_listen_to") {
-                            FeedSectionHeader(
-                                title = section.title,
-                                subtitle = section.subtitle,
-                                actionText = "Play all",
-                                actionIcon = Icons.Filled.PlayArrow,
-                                onActionClick = { viewModel.playTracksQueue(section.items, 0, section.title) },
-                            )
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                modifier = Modifier.padding(top = 12.dp),
-                            ) {
-                                itemsIndexed(section.items) { index, track ->
-                                    SongTrackCard(
-                                        track = track,
-                                        onClick = { viewModel.playTracksQueue(section.items, index, section.title) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (showSongs && state.feedData.jumpBackIn.isNotEmpty()) {
-                        item(key = "jump_back_in") {
-                            FeedSectionHeader(
-                                title = "Jump back in",
-                                subtitle = "From your listening history",
-                                actionText = "Play all",
-                                actionIcon = Icons.Filled.PlayArrow,
-                                onActionClick = { viewModel.playRecentQueue(state.feedData.jumpBackIn, 0) },
-                            )
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                modifier = Modifier.padding(top = 12.dp),
-                            ) {
-                                itemsIndexed(state.feedData.jumpBackIn) { index, track ->
-                                    RecentTrackCard(
-                                        track = track,
-                                        onClick = { viewModel.playRecentQueue(state.feedData.jumpBackIn, index) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (showPlaylists && state.feedData.mixes.isNotEmpty()) {
-                        item(key = "mixed_for_you") {
-                            FeedSectionHeader(
-                                title = "Mixes to explore",
-                                subtitle = "Familiar favorites, fresh combinations",
-                                actionText = "Shuffle",
-                                actionIcon = Icons.Filled.Shuffle,
-                                onActionClick = {
-                                    state.feedData.mixes.randomOrNull()?.let(viewModel::playPlaylistSummary)
-                                },
-                            )
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 24.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                modifier = Modifier.padding(top = 12.dp),
-                            ) {
-                                items(state.feedData.mixes, key = YouTubePlaylistSummary::id) { summary ->
-                                    PlaylistSummaryCard(
-                                        summary = summary,
-                                        onClick = { onOpenFeedPlaylist(summary.id) },
                                     )
                                 }
                             }
@@ -906,6 +909,121 @@ private fun SongTrackCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
             modifier = Modifier.padding(horizontal = 4.dp),
         )
+    }
+}
+
+/** Auto-advancing hero carousel for mixes — adapted from a similar pattern
+ *  in another music player's home screen. Pauses auto-advance while the
+ *  user is actively dragging, and shows dot indicators below. */
+@Composable
+private fun AutoScrollingMixesCarousel(
+    mixes: List<YouTubePlaylistSummary>,
+    onOpenPlaylist: (String) -> Unit,
+) {
+    if (mixes.isEmpty()) return
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { mixes.size })
+    val isInteracting by androidx.compose.runtime.derivedStateOf { pagerState.isScrollInProgress }
+
+    LaunchedEffect(pagerState.currentPage, isInteracting, mixes.size) {
+        if (!isInteracting && mixes.size > 1) {
+            kotlinx.coroutines.delay(6_500)
+            pagerState.animateScrollToPage(
+                page = (pagerState.currentPage + 1) % mixes.size,
+                animationSpec = tween(560),
+            )
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            pageSpacing = 14.dp,
+            key = { mixes[it].id },
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+        ) { page ->
+            val summary = mixes[page]
+            val selected = pagerState.currentPage == page
+            val depthScale by animateFloatAsState(
+                targetValue = if (selected) 1f else 0.965f,
+                animationSpec = tween(220),
+                label = "mixesCarouselDepth",
+            )
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)),
+                modifier = Modifier.fillMaxWidth().scale(depthScale).clickable { onOpenPlaylist(summary.id) },
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    if (!summary.artworkUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = summary.artworkUrl,
+                            contentDescription = summary.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Filled.Album,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(48.dp),
+                            )
+                        }
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    0.55f to Color.Transparent,
+                                    1f to Color.Black.copy(alpha = 0.55f),
+                                ),
+                            ),
+                    )
+                    Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+                        Text(
+                            summary.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            summary.author ?: summary.trackCountText ?: "Mix",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        if (mixes.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                repeat(mixes.size.coerceAtMost(10)) { index ->
+                    val selected = pagerState.currentPage % 10 == index
+                    Box(
+                        Modifier
+                            .padding(horizontal = 3.dp)
+                            .size(if (selected) 8.dp else 5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                            ),
+                    )
+                }
+            }
+        }
     }
 }
 

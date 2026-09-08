@@ -25,7 +25,7 @@ fun isLiquidGlassEnabled(): Boolean = LocalLiquidGlass.current
  * Substrate and reflection render behind content; text/icons render once at
  * native sharpness; only the one-pixel Fresnel edge renders afterward.
  */
-fun Modifier.liquidGlassChrome(shape: Shape, enabled: Boolean): Modifier =
+fun Modifier.liquidGlassChrome(shape: Shape, enabled: Boolean, amoled: Boolean = false): Modifier =
     if (!enabled) this else drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
         val path = when (outline) {
@@ -33,7 +33,11 @@ fun Modifier.liquidGlassChrome(shape: Shape, enabled: Boolean): Modifier =
             is Outline.Generic -> outline.path
             is Outline.Rectangle -> Path().apply { addRect(outline.rect) }
         }
-        val substrate = Color(0xFF090A0D).copy(alpha = 0.38f)
+        // On true-black (AMOLED) backgrounds, the substrate tint reads as a
+        // faint gray haze instead of blending in — pull it down ~30% so glass
+        // panels sit flush against pure black instead of looking washed out.
+        val substrateAlpha = if (amoled) 0.38f * 0.7f else 0.38f
+        val substrate = Color(0xFF090A0D).copy(alpha = substrateAlpha)
         val reflection = Brush.verticalGradient(
             0f to Color.White.copy(alpha = 0.20f),
             0.16f to Color.White.copy(alpha = 0.075f),

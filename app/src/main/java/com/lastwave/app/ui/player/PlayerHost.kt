@@ -777,7 +777,11 @@ private fun MiniPlayer(
             color = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceContainerHigh, shownAmbientTint, 0.16f),
             tonalElevation = if (edgeToEdge) 0.dp else 6.dp,
             shadowElevation = if (edgeToEdge) 0.dp else 12.dp,
-            modifier = Modifier.fillMaxWidth().liquidGlassChrome(shape, liquidGlass),
+            modifier = Modifier.fillMaxWidth().liquidGlassChrome(
+                shape,
+                liquidGlass,
+                amoled = MaterialTheme.colorScheme.background == Color.Black,
+            ),
         ) {
             Column(
                 modifier = if (edgeToEdge) {

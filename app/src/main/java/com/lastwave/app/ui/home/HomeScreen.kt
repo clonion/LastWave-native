@@ -183,12 +183,9 @@ fun HomeScreen(
         },
     ) { scaffoldPadding ->
         if (uiState.isLoading) {
-            Box(
-                Modifier.fillMaxSize().padding(scaffoldPadding).safeHorizontalContentPadding(),
-                contentAlignment = Alignment.Center,
-            ) {
-                com.lastwave.app.ui.common.ExpressiveLoadingIndicator(message = "Loading your listening history")
-            }
+            com.lastwave.app.ui.common.HomeLoadingShimmer(
+                modifier = Modifier.fillMaxSize().padding(scaffoldPadding).safeHorizontalContentPadding(),
+            )
             return@Scaffold
         }
 
@@ -367,9 +364,27 @@ private fun HeaderRow(
     // small tappable line underneath it instead of competing for top billing
     // with the listen timer. Two equal-weight pills side by side read as a
     // toolbar, not a greeting.
+    // Refresh the greeting on a timer and on app resume, so it doesn't go
+    // stale (e.g. still saying "Good afternoon" at 6pm) if the app is left
+    // open across the hour boundary.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var greetingTick by remember { mutableStateOf(0) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) greetingTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            greetingTick++
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 2.dp)) {
         Text(
-            greetingForNow(),
+            remember(greetingTick) { greetingForNow() },
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
