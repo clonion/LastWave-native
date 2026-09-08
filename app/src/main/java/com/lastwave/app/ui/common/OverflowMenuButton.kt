@@ -38,12 +38,20 @@ fun OverflowMenuButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         MaterialTheme.colorScheme.primaryContainer,
         0.55f,
     )
+    // A touch of the accent blue on the dots themselves, not just the
+    // container — was pure onPrimaryContainer (near-neutral gray in most
+    // schemes), which read as flat/ungrouped next to the rest of the UI.
+    val dotsTint = lerp(
+        MaterialTheme.colorScheme.onPrimaryContainer,
+        MaterialTheme.colorScheme.primary,
+        0.55f,
+    )
     FilledTonalIconButton(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         colors = IconButtonDefaults.filledTonalIconButtonColors(
             containerColor = darkThemeTone,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            contentColor = dotsTint,
         ),
         modifier = modifier
             .padding(start = 10.dp)

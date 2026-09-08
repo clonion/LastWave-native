@@ -152,6 +152,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -539,6 +540,50 @@ fun PlayerHost(
                     },
                 )
             }
+        }
+    }
+}
+
+/**
+ * The like/lyrics glass buttons in the full-player header. Shared by both
+ * so their size, press animation, and background can't drift apart again —
+ * only [tint] changes between them (and between liked/unliked).
+ */
+@Composable
+private fun PlayerGlassIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    tint: Color,
+) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.82f else 1.0f,
+        animationSpec = ExpressiveMotion.spatialSpring(),
+        label = "playerGlassButtonScale",
+    )
+    Surface(
+        onClick = onClick,
+        interactionSource = interaction,
+        shape = CircleShape,
+        color = Color.White.copy(alpha = 0.20f),
+        contentColor = tint,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = Modifier
+            .size(46.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(24.dp),
+            )
         }
     }
 }
@@ -1837,8 +1882,19 @@ private fun FullPlayer(
                                                 style = MaterialTheme.typography.headlineSmall.copy(
                                                     letterSpacing = (-0.35).sp,
                                                     fontWeight = FontWeight.ExtraBold,
+                                                    shadow = Shadow(
+                                                        color = Color.Black.copy(alpha = 0.35f),
+                                                        offset = Offset(0f, 1f),
+                                                        blurRadius = 6f,
+                                                    ),
                                                 ),
-                                                color = MaterialTheme.colorScheme.onSurface,
+                                                // Fixed white (not MaterialTheme.colorScheme.onSurface): this row
+                                                // sits over the blurred-artwork + black scrim background, which is
+                                                // always dark regardless of app theme. A theme-linked color can end
+                                                // up dark-on-dark when the artwork is brown/black — same reasoning
+                                                // as the White.copy(alpha=...) glass buttons used elsewhere on this
+                                                // screen (e.g. the seek-overlay controls).
+                                                color = Color.White,
                                                 maxLines = 1,
                                                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                                             )
@@ -1856,8 +1912,13 @@ private fun FullPlayer(
                                                         style = MaterialTheme.typography.titleMedium.copy(
                                                             fontSize = 17.sp,
                                                             fontWeight = FontWeight.Medium,
+                                                            shadow = Shadow(
+                                                                color = Color.Black.copy(alpha = 0.30f),
+                                                                offset = Offset(0f, 1f),
+                                                                blurRadius = 5f,
+                                                            ),
                                                         ),
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.94f),
+                                                        color = Color.White.copy(alpha = 0.94f),
                                                         modifier = Modifier
                                                             .clickable(
                                                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
@@ -1871,7 +1932,7 @@ private fun FullPlayer(
                                                                 fontSize = 17.sp,
                                                                 fontWeight = FontWeight.Normal,
                                                             ),
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.60f),
+                                                            color = Color.White.copy(alpha = 0.60f),
                                                         )
                                                     }
                                                 }
@@ -1881,77 +1942,21 @@ private fun FullPlayer(
                                         Spacer(Modifier.width(12.dp))
 
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            val likeInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                            val isLikePressed by likeInteraction.collectIsPressedAsState()
-                                            val likeScale by animateFloatAsState(
-                                                targetValue = if (isLikePressed) 0.78f else 1.0f,
-                                                animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow,
-                                                ),
-                                                label = "likeScale",
-                                            )
-                                            Surface(
+                                            // Both buttons below share one look (size, press-scale, glass
+                                            // background) so they can't drift out of sync again — only the
+                                            // active/inactive tint differs.
+                                            PlayerGlassIconButton(
                                                 onClick = onToggleLiked,
-                                                interactionSource = likeInteraction,
-                                                shape = CircleShape,
-                                                color = if (isLiked) {
-                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
-                                                } else {
-                                                    MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.40f)
-                                                },
-                                                contentColor = if (isLiked) {
-                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                                },
-                                                tonalElevation = 0.dp,
-                                                shadowElevation = 0.dp,
-                                                modifier = Modifier
-                                                    .size(46.dp)
-                                                    .graphicsLayer {
-                                                        scaleX = likeScale
-                                                        scaleY = likeScale
-                                                    },
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                                        contentDescription = if (isLiked) "Unlike song" else "Like song",
-                                                        modifier = Modifier.size(24.dp),
-                                                    )
-                                                }
-                                            }
-                                            val lyricsInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                            val isLyricsPressed by lyricsInteraction.collectIsPressedAsState()
-                                            val lyricsScale by animateFloatAsState(
-                                                targetValue = if (isLyricsPressed) 0.82f else 1.0f,
-                                                animationSpec = ExpressiveMotion.spatialSpring(),
-                                                label = "lyricsScale",
+                                                icon = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                                contentDescription = if (isLiked) "Unlike song" else "Like song",
+                                                tint = if (isLiked) Color(0xFFFF375F) else Color.White,
                                             )
-                                            Surface(
+                                            PlayerGlassIconButton(
                                                 onClick = { onTabChange(FullPlayerTab.LYRICS) },
-                                                interactionSource = lyricsInteraction,
-                                                shape = CircleShape,
-                                                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.40f),
-                                                contentColor = MaterialTheme.colorScheme.primary,
-                                                tonalElevation = 0.dp,
-                                                shadowElevation = 0.dp,
-                                                modifier = Modifier
-                                                    .size(46.dp)
-                                                    .graphicsLayer {
-                                                        scaleX = lyricsScale
-                                                        scaleY = lyricsScale
-                                                    },
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        Icons.Filled.FormatQuote,
-                                                        contentDescription = "Show lyrics",
-                                                        modifier = Modifier.size(24.dp),
-                                                    )
-                                                }
-                                            }
+                                                icon = Icons.Filled.FormatQuote,
+                                                contentDescription = "Show lyrics",
+                                                tint = Color.White,
+                                            )
                                         }
                                     }
                                     Spacer(Modifier.height(14.dp))
