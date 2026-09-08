@@ -1,6 +1,7 @@
 package com.lastwave.app.ui.home
 
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
@@ -784,16 +785,24 @@ private fun TrackRow(
     onMenuClick: () -> Unit,
 ) {
     val isNowPlaying = track.isNowPlaying
-    // Apple-style redesign: no full-width filled highlight card for the
-    // playing row — Apple Music marks "now playing" with a tinted title
-    // and a small equalizer glyph, on the same plain row background as
-    // everything else, not a distinct colored plate.
+    // Now-playing rows get a rounded outlined pill around the whole row —
+    // a primary-colored hairline border plus a soft tonal fill — so the
+    // active track is glanceable while scrolling, regardless of what
+    // artwork or background sits behind it. Animates in/out on change.
     val secondaryTextColor =
         if (isNowPlaying) MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         else MaterialTheme.colorScheme.onSurfaceVariant
+    val highlightAlpha by animateFloatAsState(
+        targetValue = if (isNowPlaying) 1f else 0f,
+        animationSpec = tween(220),
+        label = "nowPlayingHighlight",
+    )
     Surface(
         shape = TrackRowShape,
-        color = Color.Transparent,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f * highlightAlpha),
+        border = if (highlightAlpha > 0f) {
+            BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f * highlightAlpha))
+        } else null,
         tonalElevation = 0.dp,
         modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
