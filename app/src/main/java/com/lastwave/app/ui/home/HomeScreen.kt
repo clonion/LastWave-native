@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.DropdownMenu
@@ -168,8 +170,45 @@ fun HomeScreen(
 
     var menuTrack by remember { mutableStateOf<HomeTrack?>(null) }
 
+    // Computed off the main thread in HomeViewModel — see its doc comment on
+    // `rows` for why this used to jank on every Last.fm poll tick when it
+    // was collected further down instead. Hoisted here (rather than inside
+    // PullToRefreshBox as before) so the new hero "Play your mix" CTA can
+    // reuse the same queue the track list already builds — one source of
+    // truth for what "your mix" means, no separate/fake data.
+    val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val playbackQueue = remember(rows) {
+        rows.mapNotNull { row ->
+            (row as? HomeRow.Track)?.track?.let { track ->
+                com.lastwave.app.playback.PlayableTrack(
+                    title = track.name,
+                    artist = track.artist,
+                    artworkUrl = track.artworkUrl,
+                )
+            }
+        }
+    }
+    val playbackIndexByRow = remember(rows) {
+        var nextPlaybackIndex = 0
+        IntArray(rows.size) { rowIndex ->
+            if (rows[rowIndex] is HomeRow.Track) nextPlaybackIndex++ else -1
+        }
+    }
+    val musicPlayer = com.lastwave.app.ui.player.LocalMusicPlayer.current
+    val addToPlaylist = com.lastwave.app.ui.player.LocalAddToPlaylist.current
+
+    // Cinematic redesign, scoped to Home only — see HomeCinematicTheme.kt.
+    // Every composable below reads MaterialTheme.colorScheme tokens, so this
+    // single wrap re-skins the whole screen without touching the app-wide
+    // light theme other screens still use.
+    MaterialTheme(
+        colorScheme = LastWaveCinematicColorScheme,
+        typography = MaterialTheme.typography,
+        shapes = MaterialTheme.shapes,
+    ) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             ExpressiveHeader(
                 title = "LastWave",
@@ -197,7 +236,18 @@ fun HomeScreen(
                 onClick = onOpenFriends,
                 viewModel = viewModel,
             )
-            Spacer(Modifier.height(2.dp))
+
+            // Hero CTA row — "your mix" is literally the same queue the list
+            // below plays (Recent/Most Played/etc per the current sort mode),
+            // not a fabricated catalog playlist. Mix Studio reuses the
+            // existing Discover nav target rather than inventing a new screen.
+            HeroCallToAction(
+                enabled = playbackQueue.isNotEmpty(),
+                onPlayMix = {
+                    musicPlayer.playQueue(tracks = playbackQueue, startIndex = 0, sourceLabel = "Home · Your Mix")
+                },
+                onOpenMixStudio = onOpenDiscover,
+            )
 
             uiState.stats?.let { stats ->
                 StatsCard(
@@ -220,30 +270,6 @@ fun HomeScreen(
                 LaunchedEffect(listState, uiState.allTracks.size) {
                     snapshotFlowNearEnd(listState) { viewModel.loadNextPage() }
                 }
-
-                // Computed off the main thread in HomeViewModel — see its
-                // doc comment on `rows` for why this used to jank on every
-                // Last.fm poll tick when it ran inline here instead.
-                val rows by viewModel.rows.collectAsStateWithLifecycle()
-                val playbackQueue = remember(rows) {
-                    rows.mapNotNull { row ->
-                        (row as? HomeRow.Track)?.track?.let { track ->
-                            com.lastwave.app.playback.PlayableTrack(
-                                title = track.name,
-                                artist = track.artist,
-                                artworkUrl = track.artworkUrl,
-                            )
-                        }
-                    }
-                }
-                val playbackIndexByRow = remember(rows) {
-                    var nextPlaybackIndex = 0
-                    IntArray(rows.size) { rowIndex ->
-                        if (rows[rowIndex] is HomeRow.Track) nextPlaybackIndex++ else -1
-                    }
-                }
-                val musicPlayer = com.lastwave.app.ui.player.LocalMusicPlayer.current
-                val addToPlaylist = com.lastwave.app.ui.player.LocalAddToPlaylist.current
 
                 Column(
                     Modifier
@@ -341,7 +367,7 @@ fun HomeScreen(
             onDismiss = { menuTrack = null },
         )
     }
-
+    } // close cinematic MaterialTheme wrap
 }
 
 private suspend fun snapshotFlowNearEnd(listState: LazyListState, onNearEnd: () -> Unit) {
@@ -909,6 +935,64 @@ private fun TrackRow(
             // Item 1 (consistency pass): the same OverflowMenuButton is now
             // used on every screen's song list, not just Home.
             com.lastwave.app.ui.common.OverflowMenuButton(onClick = onMenuClick)
+        }
+    }
+}
+
+/**
+ * Hero CTA row, added for the cinematic Home redesign. "Play your mix"
+ * plays the same queue the list below shows (whatever the current sort
+ * mode is) — it is not a separate curated playlist, since the app has no
+ * editorial catalog. "Mix Studio" routes to the existing Discover
+ * destination (the recommendation-engine screen), reusing real navigation
+ * rather than inventing a new one.
+ */
+@Composable
+private fun HeroCallToAction(
+    enabled: Boolean,
+    onPlayMix: () -> Unit,
+    onOpenMixStudio: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 14.dp)) {
+        Text(
+            "A soundtrack curated for your day",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(
+                onClick = onPlayMix,
+                enabled = enabled,
+                shape = ExpressivePillShape,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Play your mix", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Surface(
+                onClick = onOpenMixStudio,
+                shape = ExpressivePillShape,
+                color = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Mix Studio", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }
