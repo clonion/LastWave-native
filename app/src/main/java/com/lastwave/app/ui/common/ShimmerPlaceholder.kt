@@ -36,6 +36,7 @@ import kotlin.random.Random
  * animation APIs (no third-party shimmer library) so skeleton loading
  * states read as "almost loaded" instead of a blank spinner.
  */
+@Composable
 fun Modifier.shimmerSweep(): Modifier = composedShimmer()
 
 @Composable
