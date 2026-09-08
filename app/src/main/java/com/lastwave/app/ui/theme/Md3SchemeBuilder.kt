@@ -156,6 +156,55 @@ object Md3SchemeBuilder {
         scrim = Color.Black,
     )
 
+    /**
+     * Apple-style dark scheme: same system-blue accent and role structure as
+     * [buildAppleLightScheme], just re-tuned for dark surfaces (near-black
+     * background, off-white ink) instead of a hue-seeded dark scheme — kept
+     * as its own fixed-value scheme so switching light/dark never touches
+     * the accent color the user picked.
+     */
+    fun buildAppleDarkScheme(): ColorScheme = darkColorScheme(
+        primary = Color(0xFF0A84FF),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFF163A56),
+        onPrimaryContainer = Color(0xFFD8E9FF),
+
+        secondary = Color(0xFF9B9BA1),
+        onSecondary = Color(0xFF1D1D1F),
+        secondaryContainer = Color(0xFF2C2C2E),
+        onSecondaryContainer = Color(0xFFF5F5F7),
+
+        tertiary = Color(0xFF30D158),
+        onTertiary = Color(0xFF04120A),
+        tertiaryContainer = Color(0xFF123A1F),
+        onTertiaryContainer = Color(0xFFDCF7E3),
+
+        error = Color(0xFFFF453A),
+        onError = Color.White,
+        errorContainer = Color(0xFF5C0B06),
+        onErrorContainer = Color(0xFFFFE0DE),
+
+        background = Color(0xFF000000),
+        onBackground = Color(0xFFF5F5F7),
+        surface = Color(0xFF000000),
+        onSurface = Color(0xFFF5F5F7),
+        surfaceContainer = Color(0xFF161618),
+        surfaceContainerHigh = Color(0xFF1C1C1E),
+        surfaceContainerHighest = Color(0xFF2C2C2E),
+        surfaceContainerLow = Color(0xFF0D0D0F),
+        surfaceContainerLowest = Color.Black,
+        surfaceVariant = Color(0xFF2C2C2E),
+        onSurfaceVariant = Color(0xFF9B9BA1),
+
+        outline = Color(0xFF48484A),
+        outlineVariant = Color(0xFF2C2C2E),
+
+        inverseSurface = Color(0xFFF5F5F7),
+        inverseOnSurface = Color(0xFF1D1D1F),
+        inversePrimary = Color(0xFF04315E),
+        scrim = Color.Black,
+    )
+
     private fun build(
         primaryHue: Int,
         secondaryHue: Int,

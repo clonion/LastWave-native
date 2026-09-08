@@ -45,6 +45,8 @@ data class ThemeUiState(
      *  true, container roles in [colorScheme] are semi-translucent and the
      *  chrome surfaces get specular glass dressing. */
     val liquidGlass: Boolean = false,
+    /** App-wide light/dark toggle — see [com.lastwave.app.data.local.ThemePrefs.darkMode]. */
+    val darkMode: Boolean = false,
 )
 
 @Singleton
@@ -187,14 +189,18 @@ class ThemeRepository @Inject constructor(
         settingsPreferences.settings,
     ) { prefs: ThemePrefs, dynamic: String?, nowPlaying: String?, misc: MiscSettings ->
         val isAmoled = prefs.amoled
-        // Apple-style redesign: one light scheme everywhere, replacing the
-        // earlier Nothing OS flat monochrome+red scheme and the
-        // accent-picker/dynamic-color paths below it. AMOLED (pure black)
-        // and Liquid Glass are both dark-surface concepts that don't apply
-        // to a white, opaque-surface look, so both are forced off here
-        // regardless of the stored preference.
+        // Apple-style redesign: a single light/dark pair of fixed-value
+        // schemes everywhere (Settings → Appearance → Dark Mode controls
+        // which), replacing the earlier Nothing OS flat monochrome+red
+        // scheme and the accent-picker/dynamic-color paths below it.
+        // Liquid Glass is a dark-surface concept that doesn't apply to the
+        // light scheme, so it's forced off unless dark mode is also on.
         val isGlass = false
-        val scheme = Md3SchemeBuilder.buildAppleLightScheme()
+        val scheme = if (prefs.darkMode) {
+            Md3SchemeBuilder.buildAppleDarkScheme()
+        } else {
+            Md3SchemeBuilder.buildAppleLightScheme()
+        }
         ThemeUiState(
             colorScheme = scheme,
             amoled = isAmoled,
@@ -202,6 +208,7 @@ class ThemeRepository @Inject constructor(
             accentColorHex = prefs.accentColor,
             useCustomFont = misc.useCustomFont,
             liquidGlass = isGlass,
+            darkMode = prefs.darkMode,
         )
     }.stateIn(
         applicationScope,
@@ -213,6 +220,7 @@ class ThemeRepository @Inject constructor(
             accentColorHex = "#E03030",
             useCustomFont = true,
             liquidGlass = false,
+            darkMode = false,
         ),
     )
 
@@ -227,6 +235,8 @@ class ThemeRepository @Inject constructor(
     }
 
     suspend fun setAmoled(enabled: Boolean) = themePreferences.setAmoled(enabled)
+
+    suspend fun setDarkMode(enabled: Boolean) = themePreferences.setDarkMode(enabled)
 
     suspend fun setLiquidGlass(enabled: Boolean) = themePreferences.setLiquidGlass(enabled)
 

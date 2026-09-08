@@ -197,15 +197,9 @@ fun HomeScreen(
     val musicPlayer = com.lastwave.app.ui.player.LocalMusicPlayer.current
     val addToPlaylist = com.lastwave.app.ui.player.LocalAddToPlaylist.current
 
-    // Cinematic redesign, scoped to Home only — see HomeCinematicTheme.kt.
-    // Every composable below reads MaterialTheme.colorScheme tokens, so this
-    // single wrap re-skins the whole screen without touching the app-wide
-    // light theme other screens still use.
-    MaterialTheme(
-        colorScheme = LastWaveCinematicColorScheme,
-        typography = MaterialTheme.typography,
-        shapes = MaterialTheme.shapes,
-    ) {
+    // Now follows the app-wide theme (Settings → Appearance → Dark Mode)
+    // instead of always forcing the standalone cinematic dark palette from
+    // HomeCinematicTheme.kt, so Stats and Feed stay in sync with each other.
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background,
@@ -367,7 +361,6 @@ fun HomeScreen(
             onDismiss = { menuTrack = null },
         )
     }
-    } // close cinematic MaterialTheme wrap
 }
 
 private suspend fun snapshotFlowNearEnd(listState: LazyListState, onNearEnd: () -> Unit) {

@@ -131,8 +131,8 @@ object FloatingNavDefaults {
 // Hoisted to plain top-level vals instead of being constructed inside a
 // @Composable body: RoundedCornerShape is immutable and never changes here,
 // so there's no reason to let it be reconstructed on every recomposition.
-private val DockShape: Shape = RoundedCornerShape(0.dp)
-private val PillShape: Shape = RoundedCornerShape(0.dp)
+private val DockShape: Shape = RoundedCornerShape(32.dp)
+private val PillShape: Shape = RoundedCornerShape(20.dp)
 
 // One shared spring keeps tab selection, label expansion, and pager controls
 // visually coherent while preserving each call site's inferred value type.

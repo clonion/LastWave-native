@@ -29,6 +29,10 @@ data class ThemePrefs(
     /** Experimental iOS-style liquid-glass materials. Off by default — the
      *  classic opaque look stays untouched until the user opts in. */
     val liquidGlass: Boolean = false,
+    /** App-wide light/dark toggle for the Apple-style scheme (Settings →
+     *  Appearance → Dark Mode). Independent of [amoled], which only applies
+     *  once this is already true. */
+    val darkMode: Boolean = false,
 )
 
 @Singleton
@@ -41,6 +45,7 @@ class ThemePreferences @Inject constructor(
         val ACCENT_MODE = stringPreferencesKey("lw_accentMode")
         val AMOLED = booleanPreferencesKey("lw_amoled")
         val LIQUID_GLASS = booleanPreferencesKey("lw_liquidGlass")
+        val DARK_MODE = booleanPreferencesKey("lw_darkMode")
     }
 
     val prefs: Flow<ThemePrefs> = dataStore.data
@@ -52,6 +57,7 @@ class ThemePreferences @Inject constructor(
                 accentMode = AccentMode.fromStorage(p.readSafely(Keys.ACCENT_MODE)),
                 amoled = p.readSafely(Keys.AMOLED) ?: false,
                 liquidGlass = p.readSafely(Keys.LIQUID_GLASS) ?: false,
+                darkMode = p.readSafely(Keys.DARK_MODE) ?: false,
             )
         }
 
@@ -73,5 +79,9 @@ class ThemePreferences @Inject constructor(
 
     suspend fun setLiquidGlass(enabled: Boolean) {
         dataStore.edit { it[Keys.LIQUID_GLASS] = enabled }
+    }
+
+    suspend fun setDarkMode(enabled: Boolean) {
+        dataStore.edit { it[Keys.DARK_MODE] = enabled }
     }
 }
