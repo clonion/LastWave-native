@@ -772,6 +772,12 @@ private fun QuickTileCard(tile: FeedQuickTile, modifier: Modifier = Modifier, on
 }
 
 @Composable
+/**
+ * Spotify-style "Quick picks" list — full-width rows stacked vertically
+ * instead of the old 3-per-column horizontal scroller, with bigger 56dp
+ * artwork so tracks read clearly instead of feeling cramped.
+ */
+@Composable
 private fun QuickPicksRows(
     tracks: List<YouTubeMusicTrack>,
     currentPlayingVideoId: String?,
@@ -779,77 +785,66 @@ private fun QuickPicksRows(
     onTrackClick: (Int) -> Unit,
     onMenuClick: (YouTubeMusicTrack) -> Unit,
 ) {
-    val columns = remember(tracks) { tracks.chunked(3) }
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.padding(top = 12.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        itemsIndexed(columns) { columnIndex, column ->
-            Column(
-                modifier = Modifier.fillParentMaxWidth(0.86f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+        tracks.forEachIndexed { index, track ->
+            val isCurrent = track.videoId.isNotBlank() && track.videoId == currentPlayingVideoId
+            Surface(
+                onClick = { onTrackClick(index) },
+                shape = RoundedCornerShape(14.dp),
+                color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                else Color.Transparent,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                column.forEachIndexed { rowIndex, track ->
-                    val overallIndex = columnIndex * 3 + rowIndex
-                    val isCurrent = track.videoId.isNotBlank() && track.videoId == currentPlayingVideoId
-                    Surface(
-                        onClick = { onTrackClick(overallIndex) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f),
-                        border = if (isCurrent) BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) else null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Box(modifier = Modifier.size(48.dp)) {
-                                ArtworkImage(
-                                    name = track.title,
-                                    artist = track.artist,
-                                    embeddedUrl = track.artworkUrl,
-                                    fallbackIcon = Icons.Filled.MusicNote,
-                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
-                                )
-                                if (isCurrent && isPlaying) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(Color.Black.copy(alpha = 0.45f)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        PlayingWaveBars(modifier = Modifier.size(18.dp))
-                                    }
-                                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(modifier = Modifier.size(56.dp)) {
+                        ArtworkImage(
+                            name = track.title,
+                            artist = track.artist,
+                            embeddedUrl = track.artworkUrl,
+                            fallbackIcon = Icons.Filled.MusicNote,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                        )
+                        if (isCurrent && isPlaying) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.45f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                PlayingWaveBars(modifier = Modifier.size(20.dp))
                             }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    track.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(start = 2.dp),
-                                )
-                                Text(
-                                    track.artist,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(start = 2.dp),
-                                )
-                            }
-                            com.lastwave.app.ui.common.OverflowMenuButton(onClick = { onMenuClick(track) })
                         }
                     }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            track.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            track.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    com.lastwave.app.ui.common.OverflowMenuButton(onClick = { onMenuClick(track) })
                 }
             }
         }
