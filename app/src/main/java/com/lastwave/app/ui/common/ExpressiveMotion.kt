@@ -33,6 +33,22 @@ object ExpressiveMotion {
         stiffness = Spring.StiffnessHigh,
     )
 
+    /**
+     * The one press-scale feel for every tappable icon button in the
+     * player (like, lyrics, prev/next, play/pause) — was previously three
+     * different hand-tuned springs across these buttons (this file had
+     * spatialSpring's no-bounce for prev/next/like/lyrics while play/pause
+     * used its own bouncy spring inline), so identical taps felt
+     * different depending on which button you hit. This is the play
+     * button's original spring — the most "primary CTA" feeling of the
+     * three — promoted to the shared default so every player control
+     * settles the same way.
+     */
+    fun <T> pressSpring() = spring<T>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+
     fun <T> smoothSpring() = spring<T>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessHigh,

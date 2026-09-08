@@ -44,7 +44,7 @@ fun OverflowMenuButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val dotsTint = lerp(
         MaterialTheme.colorScheme.onPrimaryContainer,
         MaterialTheme.colorScheme.primary,
-        0.55f,
+        0.85f,
     )
     FilledTonalIconButton(
         onClick = onClick,

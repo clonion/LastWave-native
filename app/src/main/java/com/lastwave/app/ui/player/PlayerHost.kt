@@ -29,6 +29,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -560,9 +562,17 @@ private fun PlayerGlassIconButton(
     val isPressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.82f else 1.0f,
-        animationSpec = ExpressiveMotion.spatialSpring(),
+        animationSpec = ExpressiveMotion.pressSpring(),
         label = "playerGlassButtonScale",
     )
+    // Felt tap feedback on every press — same pattern as the sort pill on
+    // Home (LaunchedEffect on the raw pressed state, not inside onClick,
+    // so it lands the instant the finger goes down instead of racing
+    // whatever the click itself triggers).
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(isPressed) {
+        if (isPressed) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
     Surface(
         onClick = onClick,
         interactionSource = interaction,
@@ -681,6 +691,34 @@ private fun MiniPlayer(
 ) {
     val context = LocalContext.current
     val track = state.current ?: return
+    // Ambient artwork tint, matching the full player: was only extracted
+    // there before, so the mini player sat flat/static regardless of the
+    // song's dominant color while the full player breathed with it — same
+    // Coil request URL, so this is normally a cache hit (no extra
+    // network), not a duplicate fetch.
+    var ambientTint by remember(track.videoId, track.artworkUrl) { mutableStateOf<Color?>(null) }
+    LaunchedEffect(track.videoId, track.artworkUrl) {
+        val url = track.artworkUrl?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .allowHardware(false)
+                    .size(128)
+                    .build()
+                val bitmap = ((context.imageLoader.execute(request) as? SuccessResult)?.drawable as? BitmapDrawable)?.bitmap
+                    ?: return@runCatching
+                val palette = Palette.from(bitmap).clearFilters().generate()
+                val swatch = palette.vibrantSwatch ?: palette.dominantSwatch ?: palette.mutedSwatch
+                if (swatch != null) ambientTint = Color(swatch.rgb)
+            }
+        }
+    }
+    val shownAmbientTint by animateColorAsState(
+        targetValue = ambientTint ?: MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = tween(700),
+        label = "miniPlayerAmbientTint",
+    )
     // Liquid Glass dressing for the floating mini player (no-op when the
     // experimental setting is off — see ui/theme/LiquidGlass.kt).
     val liquidGlass = LocalLiquidGlass.current
@@ -736,7 +774,7 @@ private fun MiniPlayer(
     ) {
         Surface(
             shape = shape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceContainerHigh, shownAmbientTint, 0.16f),
             tonalElevation = if (edgeToEdge) 0.dp else 6.dp,
             shadowElevation = if (edgeToEdge) 0.dp else 12.dp,
             modifier = Modifier.fillMaxWidth().liquidGlassChrome(shape, liquidGlass),
@@ -780,12 +818,32 @@ private fun MiniPlayer(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    // Same press-scale + haptic feel as the full player's
+                    // play/pause (MainControls) — was a plain tap target
+                    // with no feedback of its own before.
+                    val miniHaptics = LocalHapticFeedback.current
+                    val miniPlayInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val isMiniPlayPressed by miniPlayInteraction.collectIsPressedAsState()
+                    val miniPlayScale by animateFloatAsState(
+                        targetValue = if (isMiniPlayPressed) 0.88f else 1.0f,
+                        animationSpec = ExpressiveMotion.pressSpring(),
+                        label = "miniPlayScale",
+                    )
+                    LaunchedEffect(isMiniPlayPressed) {
+                        if (isMiniPlayPressed) miniHaptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
                     Surface(
                         onClick = onToggle,
+                        interactionSource = miniPlayInteraction,
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .graphicsLayer {
+                                scaleX = miniPlayScale
+                                scaleY = miniPlayScale
+                            },
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             if (state.isBuffering) {
@@ -2266,24 +2324,32 @@ private fun SeekBar(
 
 @Composable
 private fun MainControls(state: MusicPlayerState, player: MusicPlayer, isTranslucent: Boolean = false) {
+    val haptics = LocalHapticFeedback.current
+
     val prevInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isPrevPressed by prevInteraction.collectIsPressedAsState()
-    val prevScale by animateFloatAsState(if (isPrevPressed) 0.85f else 1.0f, ExpressiveMotion.spatialSpring(), label = "prevScale")
+    val prevScale by animateFloatAsState(if (isPrevPressed) 0.85f else 1.0f, ExpressiveMotion.pressSpring(), label = "prevScale")
+    LaunchedEffect(isPrevPressed) {
+        if (isPrevPressed) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
 
     val playInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isPlayPressed by playInteraction.collectIsPressedAsState()
     val playScale by animateFloatAsState(
         targetValue = if (isPlayPressed) 0.88f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
+        animationSpec = ExpressiveMotion.pressSpring(),
         label = "playScale",
     )
+    LaunchedEffect(isPlayPressed) {
+        if (isPlayPressed) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
 
     val nextInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isNextPressed by nextInteraction.collectIsPressedAsState()
-    val nextScale by animateFloatAsState(if (isNextPressed) 0.85f else 1.0f, ExpressiveMotion.spatialSpring(), label = "nextScale")
+    val nextScale by animateFloatAsState(if (isNextPressed) 0.85f else 1.0f, ExpressiveMotion.pressSpring(), label = "nextScale")
+    LaunchedEffect(isNextPressed) {
+        if (isNextPressed) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
 
     Row(
         Modifier.fillMaxWidth(),
