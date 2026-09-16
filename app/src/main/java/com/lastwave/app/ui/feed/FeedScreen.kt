@@ -991,48 +991,55 @@ private fun FeedFooter(lastUpdatedMillis: Long) {
 
 
 
+/** Signature gradient + icon per tile "kind", so tiles read at a glance instead of blurring together. */
+private data class QuickTileVisual(
+    val gradient: List<Color>,
+    val icon: ImageVector,
+    val iconTint: Color,
+)
+
+private fun quickTileVisual(tile: FeedQuickTile): QuickTileVisual = when {
+    tile.isLiked -> QuickTileVisual(
+        gradient = listOf(Color(0xFFFF5C7A), Color(0xFFB2124B)),
+        icon = Icons.Filled.Favorite,
+        iconTint = Color.White,
+    )
+    tile.collection == "new_releases" -> QuickTileVisual(
+        gradient = listOf(Color(0xFFFFB648), Color(0xFFE0631E)),
+        icon = Icons.Filled.NewReleases,
+        iconTint = Color.White,
+    )
+    tile.collection == "radio" || tile.title.equals("Mix", ignoreCase = true) -> QuickTileVisual(
+        gradient = listOf(Color(0xFF8C6CFF), Color(0xFF4A2AC7)),
+        icon = Icons.Filled.AutoAwesome,
+        iconTint = Color.White,
+    )
+    else -> QuickTileVisual(
+        gradient = listOf(Color(0xFF4FC3E8), Color(0xFF1C6FA6)),
+        icon = Icons.Filled.MusicNote,
+        iconTint = Color.White,
+    )
+}
+
 @Composable
 private fun QuickTilesGrid(
     tiles: List<FeedQuickTile>,
     onTileClick: (FeedQuickTile) -> Unit,
 ) {
     val sizeClass = rememberWindowSizeClass()
-    val columns = when (sizeClass) {
-        WindowSizeClass.COMPACT -> 2
-        WindowSizeClass.MEDIUM -> 3
-        WindowSizeClass.EXPANDED -> 4
-    }
     val tileLimit = when (sizeClass) {
         WindowSizeClass.COMPACT -> 6
         WindowSizeClass.MEDIUM -> 6
         WindowSizeClass.EXPANDED -> 8
     }
-    val rows = remember(tiles, columns, tileLimit) { tiles.take(tileLimit).chunked(columns) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    val shown = remember(tiles, tileLimit) { tiles.take(tileLimit) }
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        rows.forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                rowItems.forEach { tile ->
-                    QuickTileCard(
-                        tile = tile,
-                        modifier = Modifier.weight(1f),
-                        onClick = { onTileClick(tile) },
-                    )
-                }
-                val remaining = columns - rowItems.size
-                if (remaining > 0) {
-                    repeat(remaining) {
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
+        items(shown, key = { it.collection ?: it.playlistId ?: it.localPlaylistId?.toString() ?: it.title }) { tile ->
+            QuickTileCard(tile = tile, onClick = { onTileClick(tile) })
         }
     }
 }
@@ -1040,71 +1047,91 @@ private fun QuickTilesGrid(
 @Composable
 private fun QuickTileCard(tile: FeedQuickTile, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val liquidGlass = LocalLiquidGlass.current
-    val tileShape = RoundedCornerShape(18.dp)
+    val tileShape = RoundedCornerShape(20.dp)
+    val visual = remember(tile) { quickTileVisual(tile) }
+    val hasArtwork = !tile.isLiked && !tile.artworkUrl.isNullOrBlank()
+
     LiquidGlassSurface(
         glassModifier = Modifier.liquidGlassChrome(tileShape, liquidGlass),
         onClick = onClick,
         shape = tileShape,
-        color = liquidGlassContainerColor(
-            if (tile.isLiked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-            else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f),
-        ),
+        color = liquidGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.75f)),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
         ),
-        modifier = modifier
-            .height(64.dp),
+        modifier = modifier.width(136.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize(),
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp))
+                    .fillMaxWidth()
+                    .aspectRatio(1.55f)
                     .background(
-                        if (tile.isLiked) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                        else MaterialTheme.colorScheme.surfaceContainerHighest
+                        if (hasArtwork) Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+                        else Brush.linearGradient(visual.gradient),
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                if (tile.isLiked) {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                } else if (!tile.artworkUrl.isNullOrBlank()) {
+                if (hasArtwork) {
                     AsyncImage(
                         model = tile.artworkUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
-                } else if (tile.collection == "new_releases") {
-                    Icon(
-                        Icons.Filled.NewReleases,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)))),
                     )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(8.dp)
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            visual.icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                 } else {
                     Icon(
-                        Icons.Filled.MusicNote,
+                        visual.icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(24.dp),
+                        tint = visual.iconTint.copy(alpha = 0.9f),
+                        modifier = Modifier.size(30.dp),
                     )
+                }
+                if (tile.actionVideoId != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp),
+                        )
+                    }
                 }
             }
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 10.dp, end = 8.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 Text(
@@ -1122,23 +1149,6 @@ private fun QuickTileCard(tile: FeedQuickTile, modifier: Modifier = Modifier, on
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 )
-            }
-            if (tile.actionVideoId != null) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 10.dp)
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.PlayArrow,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
             }
         }
     }
